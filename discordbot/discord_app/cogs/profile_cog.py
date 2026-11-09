@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from core.services.study_manager import StudyManager
-from services.leetcode import LeetCodeService
+from infrastructure.verifiers.leetcode_verifier import LeetCodeVerifier
 
 def make_progress_bar(percentage: float, length: int = 12) -> str:
     filled = int(round((percentage / 100) * length))
@@ -68,7 +68,7 @@ class ProfileCog(commands.Cog):
     @app_commands.describe(username="Your exact LeetCode username")
     async def set_handle_command(self, interaction: discord.Interaction, username: str):
         await interaction.response.defer(ephemeral=True)
-        stats = await LeetCodeService.get_user_stats(username)
+        stats = await LeetCodeVerifier.get_user_stats(username)
 
         if not stats:
             await interaction.followup.send(

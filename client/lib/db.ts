@@ -1,7 +1,7 @@
 import { createClient } from "@libsql/client";
 import path from "path";
 
-const url = process.env.TURSO_DATABASE_URL || `file:${path.resolve(process.cwd(), "../data/bot.db")}`;
+const url = process.env.TURSO_DATABASE_URL || `file:${path.resolve(process.cwd(), "../discordbot/data/bot.db")}`;
 const authToken = process.env.TURSO_AUTH_TOKEN;
 
 export const db = createClient({

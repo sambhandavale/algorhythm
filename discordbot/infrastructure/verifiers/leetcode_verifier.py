@@ -1,24 +1,13 @@
 import aiohttp
-from typing import Optional, List, Dict, Tuple
+from typing import Tuple, Optional
+from core.models.problem import Problem
+from core.interfaces.verifier import ISubmissionVerifier
 
 LEETCODE_GRAPHQL_URL = "https://leetcode.com/graphql"
-
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/124.0.0.0 Safari/537.36"
-)
-
-HEADERS = {
-    "User-Agent": USER_AGENT,
-    "Content-Type": "application/json",
-    "Referer": "https://leetcode.com"
-}
 
 RECENT_SUBMISSIONS_QUERY = """
 query getRecentSubmissions($username: String!, $limit: Int!) {
   recentSubmissionList(username: $username, limit: $limit) {
-    title
     titleSlug
     statusDisplay
     timestamp
@@ -44,43 +33,42 @@ query getUserProfile($username: String!) {
 }
 """
 
-class LeetCodeService:
-    @staticmethod
-    async def get_recent_submissions(username: str, limit: int = 20) -> List[dict]:
-        """Fetches the latest public submissions for a LeetCode user."""
+class LeetCodeVerifier(ISubmissionVerifier):
+    async def verify(self, username: str, problem: Problem) -> Tuple[bool, Optional[str]]:
+        if not problem.lc_slug:
+            return False, "This problem does not have a LeetCode slug configured."
+
         payload = {
             "query": RECENT_SUBMISSIONS_QUERY,
             "variables": {
                 "username": username,
-                "limit": limit
+                "limit": 20
             }
         }
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(LEETCODE_GRAPHQL_URL, json=payload, headers=HEADERS, timeout=10) as resp:
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Content-Type": "application/json",
+            "Referer": "https://leetcode.com"
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(LEETCODE_GRAPHQL_URL, json=payload, headers=headers, timeout=8) as resp:
                     if resp.status != 200:
-                        return []
+                        return False, "Could not contact LeetCode API."
+
                     data = await resp.json()
-                    return data.get("data", {}).get("recentSubmissionList") or []
-            except Exception:
-                return []
+                    submissions = data.get("data", {}).get("recentSubmissionList") or []
 
-    @staticmethod
-    async def verify_problem_solved(username: str, target_slug: str) -> Tuple[bool, Optional[dict]]:
-        """
-        Checks whether the user has an 'Accepted' submission for target_slug in their recent submissions.
-        Returns: (is_solved, matching_submission)
-        """
-        submissions = await LeetCodeService.get_recent_submissions(username, limit=20)
-        target_clean = target_slug.strip().lower()
+                    target = problem.lc_slug.strip().lower()
+                    for sub in submissions:
+                        if sub.get("titleSlug", "").strip().lower() == target:
+                            if sub.get("statusDisplay", "").lower() == "accepted":
+                                return True, "Accepted"
 
-        for sub in submissions:
-            sub_slug = sub.get("titleSlug", "").strip().lower()
-            status = sub.get("statusDisplay", "")
-            if sub_slug == target_clean and status.lower() == "accepted":
-                return True, sub
-
-        return False, None
+                    return False, f"No 'Accepted' submission found for '{problem.lc_slug}' in your last 20 submissions."
+        except Exception as e:
+            return False, f"Verification request failed: {e}"
 
     @staticmethod
     async def get_user_stats(username: str) -> Optional[dict]:
@@ -91,9 +79,14 @@ class LeetCodeService:
                 "username": username
             }
         }
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(LEETCODE_GRAPHQL_URL, json=payload, headers=HEADERS, timeout=10) as resp:
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Content-Type": "application/json",
+            "Referer": "https://leetcode.com"
+        }
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(LEETCODE_GRAPHQL_URL, json=payload, headers=headers, timeout=10) as resp:
                     if resp.status != 200:
                         return None
                     data = await resp.json()
@@ -113,5 +106,5 @@ class LeetCodeService:
                         "medium": stats.get("Medium", 0),
                         "hard": stats.get("Hard", 0)
                     }
-            except Exception:
-                return None
+        except Exception:
+            return None

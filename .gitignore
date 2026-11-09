@@ -1,25 +1,38 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 venv/
 .venv/
+discordbot/__pycache__/
+discordbot/*/__pycache__/
+discordbot/*/*/__pycache__/
 
 # Environment secrets
 .env
 .env*.local
 *.env
-dashboard/.env.local
-dashboard/.env*.local
+client/.env*.local
+discordbot/.env
+discordbot/.env*.local
 
 # Node / Next.js
 node_modules/
-dashboard/node_modules/
+client/node_modules/
 .next/
-dashboard/.next/
+client/.next/
 out/
-dashboard/out/
+client/out/
 
 # Database & local data
 *.db
 *.sqlite
 *.sqlite3
+discordbot/data/bot.db
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
