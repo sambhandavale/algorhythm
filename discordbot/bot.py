@@ -23,7 +23,7 @@ from config import (
     ENABLE_HEALTH_SERVER
 )
 from core.models.pattern import PatternNote
-from infrastructure.database.sqlite_repo import SQLiteRepository
+from infrastructure.database.repo_factory import get_repository
 from infrastructure.sources.striver_adapter import StriverSheetAdapter
 from infrastructure.sources.leetcode_adapter import LeetCodeAdapter
 from infrastructure.verifiers.leetcode_verifier import LeetCodeVerifier
@@ -44,7 +44,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Dependency Injection Container
-repository = SQLiteRepository(DATABASE_PATH)
+repository = get_repository()
 primary_source = StriverSheetAdapter(SHEET_PATH)
 verifier = LeetCodeVerifier()
 ai_tutor = get_ai_tutor()

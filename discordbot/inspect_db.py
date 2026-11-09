@@ -1,7 +1,8 @@
-import sqlite3
+import asyncio
 import sys
+from config import TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
+from infrastructure.database.repo_factory import get_repository
 
-# Ensure UTF-8 output on Windows consoles
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -9,37 +10,39 @@ if sys.platform == "win32":
     except AttributeError:
         pass
 
-def inspect():
-    conn = sqlite3.connect("data/bot.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+async def inspect():
+    repo = get_repository()
+    await repo.init()
 
     print("=" * 60)
-    print("👤 USER PROFILE:")
+    print("👤 ACTIVE USERS:")
     print("=" * 60)
-    for row in cursor.execute("SELECT * FROM users"):
-        d = dict(row)
-        for k, v in d.items():
-            print(f"  • {k:22}: {v}")
+    users = await repo.get_all_active_users()
+    if not users:
+        print("  (No active users with configured channels)")
+    for u in users:
+        print(f"  • User ID: {u.user_id}")
+        print(f"    - LeetCode Handle : {u.leetcode_username}")
+        print(f"    - Channel ID      : {u.channel_id}")
+        print(f"    - Notes Channel ID: {u.notes_channel_id}")
+        print(f"    - Streak          : {u.current_streak} days (Record: {u.longest_streak})")
+        print(f"    - Reminder Time   : {u.reminder_hour:02d}:{u.reminder_minute:02d}")
 
-    print("\n" + "=" * 60)
-    print("📚 PROBLEM PROGRESS (Last 10 Records):")
-    print("=" * 60)
-    rows = list(cursor.execute("SELECT * FROM problem_progress ORDER BY solved_at DESC LIMIT 10"))
-    if not rows:
-        print("  (No problems recorded yet)")
-    for r in rows:
-        d = dict(r)
-        print(f"  • [{d['status']:7}] Problem ID: {d['problem_id']:10} | Via: {d['source']:8} | At: {d['solved_at']}")
+        solved = await repo.get_solved_ids(u.user_id)
+        print(f"    - Solved Problems : {len(solved)} / 402")
 
     print("\n" + "=" * 60)
-    print("🎯 TODAY'S ASSIGNMENT:")
-    print("=" * 60)
-    for r in cursor.execute("SELECT * FROM daily_assignments"):
-        d = dict(r)
-        status = "COMPLETED ✅" if d["completed"] else "PENDING ⏳"
-        print(f"  • Date: {d['assigned_date']} | Problem ID: {d['problem_id']} | Status: {status}")
+    if users:
+        u = users[0]
+        latest = await repo.get_latest_assignment(u.user_id)
+        print("🎯 LATEST DAILY ASSIGNMENT:")
+        print("=" * 60)
+        if latest:
+            status = "COMPLETED ✅" if latest.get("completed") else "PENDING ⏳"
+            print(f"  • Date: {latest.get('assigned_date')} | Problem ID: {latest.get('problem_id')} | Status: {status}")
+        else:
+            print("  (No daily assignment recorded)")
     print("=" * 60)
 
 if __name__ == "__main__":
-    inspect()
+    asyncio.run(inspect())
