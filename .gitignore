@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Environment secrets
+.env
+.env*.local
+*.env
+dashboard/.env.local
+dashboard/.env*.local
+
+# Node / Next.js
+node_modules/
+dashboard/node_modules/
+.next/
+dashboard/.next/
+out/
+dashboard/out/
+
+# Database & local data
+*.db
+*.sqlite
+*.sqlite3
