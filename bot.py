@@ -20,7 +20,7 @@ from infrastructure.database.sqlite_repo import SQLiteRepository
 from infrastructure.sources.striver_adapter import StriverSheetAdapter
 from infrastructure.sources.leetcode_adapter import LeetCodeAdapter
 from infrastructure.verifiers.leetcode_verifier import LeetCodeVerifier
-from infrastructure.ai.gemini_adapter import GeminiAdapter
+from infrastructure.ai.ai_factory import get_ai_tutor
 from core.services.study_manager import StudyManager
 from core.services.streak_service import StreakService
 
@@ -38,9 +38,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Dependency Injection Container
 repository = SQLiteRepository(DATABASE_PATH)
 primary_source = StriverSheetAdapter(SHEET_PATH)
-extra_source = LeetCodeAdapter()
 verifier = LeetCodeVerifier()
-ai_tutor = GeminiAdapter()
+ai_tutor = get_ai_tutor()
+extra_source = LeetCodeAdapter(ai_tutor=ai_tutor)
 
 study_manager = StudyManager(
     primary_source=primary_source,
@@ -62,10 +62,12 @@ if notes_path.exists():
 
 @bot.event
 async def on_ready():
+    provider_name = type(ai_tutor.primary).__name__.replace("Adapter", "")
     print("=" * 60)
     print(f"🤖 Bot online as {bot.user.name}#{bot.user.discriminator} (ID: {bot.user.id})")
     print(f"📚 Striver A2Z Curriculum: {len(primary_source.get_all_problems())} problems loaded")
-    print(f"🧠 Pattern Notes Registered: {len(study_manager._pattern_notes)} cheat sheets")
+    print(f"🧠 Active AI Provider: {provider_name}")
+    print(f"📖 Pattern Notes Registered: {len(study_manager._pattern_notes)} cheat sheets")
     
     # Sync Slash Commands
     try:

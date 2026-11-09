@@ -1,25 +1,32 @@
 import os
 import aiohttp
-from typing import Optional
+import json
+import re
+from typing import Optional, List
 from core.models.problem import Problem
 from core.interfaces.ai_tutor import IAITutor
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 class GeminiAdapter(IAITutor):
-    def __init__(self, api_key: str = GEMINI_API_KEY):
+    def __init__(self, api_key: str = GEMINI_API_KEY, model: str = GEMINI_MODEL):
         self.api_key = api_key
+        self.model = model
+
+    @property
+    def api_url(self) -> str:
+        return f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
 
     async def _generate(self, system_instruction: str, prompt: str) -> str:
         if not self.api_key:
             return (
                 "⚠️ **AI Tutor is currently disabled.**\n"
-                "To enable Socratic hints and code reviews, add `GEMINI_API_KEY=your_key` to your `.env` file! "
+                "To enable Socratic hints, code reviews, and AI problem generation, add `GEMINI_API_KEY=your_key` to your `.env` file! "
                 "(You can get a free key at https://aistudio.google.com/)"
             )
 
-        url = f"{GEMINI_API_URL}?key={self.api_key}"
+        url = f"{self.api_url}?key={self.api_key}"
         payload = {
             "system_instruction": {
                 "parts": [{"text": system_instruction}]
@@ -105,3 +112,26 @@ class GeminiAdapter(IAITutor):
             f"Currently Practicing Problem: {problem_title}"
         )
         return await self._generate(sys_prompt, prompt)
+
+    async def generate_drill_problems(self, pattern_name: str, topic: str, count: int = 3) -> List[dict]:
+        sys_prompt = (
+            "You are a Senior Technical Recruiter and DSA Coach. Curate realistic coding interview problems "
+            "strictly for the requested pattern. Return ONLY a valid JSON array of objects with no markdown fences, "
+            "containing: title, difficulty (Easy, Medium, or Hard), and slug (leetcode url slug)."
+        )
+        prompt = (
+            f"Recommend {count} top LeetCode coding interview problems for:\n"
+            f"Topic: {topic}\n"
+            f"Pattern: {pattern_name}\n\n"
+            f"Return JSON format:\n"
+            f'[{{"title": "Search in Rotated Sorted Array", "difficulty": "Medium", "slug": "search-in-rotated-sorted-array"}}]'
+        )
+        raw = await self._generate(sys_prompt, prompt)
+        try:
+            cleaned = re.sub(r"```(?:json)?\n?", "", raw).strip().rstrip("`")
+            data = json.loads(cleaned)
+            if isinstance(data, list):
+                return data
+        except Exception:
+            pass
+        return []

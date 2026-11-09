@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 from core.models.problem import Problem
 
 class IAITutor(ABC):
@@ -21,4 +21,9 @@ class IAITutor(ABC):
     @abstractmethod
     async def generate_pattern_insight(self, pattern_name: str, topic: str, problem_title: str) -> str:
         """Generates a fresh, bite-sized tip, mental model, or interview trap for the pattern."""
+        pass
+
+    @abstractmethod
+    async def generate_drill_problems(self, pattern_name: str, topic: str, count: int = 3) -> List[dict]:
+        """AI fallback to curate practice problems if external APIs return empty."""
         pass
