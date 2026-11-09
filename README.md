@@ -215,15 +215,19 @@ algorhythm/
    * `TURSO_AUTH_TOKEN`
 5. Click **Deploy**!
 
-### Deploying the Discord Bot (Railway / Render / VPS)
-1. In Railway or Render, select your repository.
+### Deploying the Discord Bot (Railway / Render / Fly.io / VPS)
+1. In Railway, Render, or Fly.io, select your repository.
 2. Set **Root Directory** to `discordbot`.
 3. Set **Start Command** to:
    ```bash
    python bot.py
    ```
-4. Add your environment variables (`DISCORD_TOKEN`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `GEMINI_API_KEY` / `GROK_API_KEY`).
-5. Deploy as a persistent background worker.
+4. Add your environment variables (`DISCORD_TOKEN`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `GEMINI_API_KEY` / `GROK_API_KEY`, and optional `PORT`).
+5. **Built-in HTTP Health Check**:
+   The bot automatically runs a non-blocking asynchronous HTTP server on `PORT` (default: `8080`):
+   * `GET /health`: Returns JSON metrics (`status`, `uptime_seconds`, `latency_ms`, `guilds`) with `200 OK`.
+   * `GET /`: Returns a quick alive confirmation message.
+   * Configure `/health` as your health check path in Render / Railway / UptimeRobot to keep the service active.
 
 ---
 

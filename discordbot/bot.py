@@ -14,13 +14,21 @@ if sys.platform == "win32":
 import discord
 from discord.ext import commands
 
-from config import DISCORD_TOKEN, DATABASE_PATH, SHEET_PATH
+from config import (
+    DISCORD_TOKEN,
+    DATABASE_PATH,
+    SHEET_PATH,
+    HOST,
+    PORT,
+    ENABLE_HEALTH_SERVER
+)
 from core.models.pattern import PatternNote
 from infrastructure.database.sqlite_repo import SQLiteRepository
 from infrastructure.sources.striver_adapter import StriverSheetAdapter
 from infrastructure.sources.leetcode_adapter import LeetCodeAdapter
 from infrastructure.verifiers.leetcode_verifier import LeetCodeVerifier
 from infrastructure.ai.ai_factory import get_ai_tutor
+from infrastructure.web import start_health_server
 from core.services.study_manager import StudyManager
 from core.services.streak_service import StreakService
 
@@ -96,9 +104,18 @@ async def main():
     await bot.add_cog(ProfileCog(bot, study_manager))
     await bot.add_cog(SchedulerCog(bot, study_manager, streak_service, verifier, ai_tutor))
 
+    # Start Health Check Server (for Render / Railway / uptime pingers)
+    runner = None
+    if ENABLE_HEALTH_SERVER:
+        runner = await start_health_server(bot, host=HOST, port=PORT)
+
     # Start Bot
-    async with bot:
-        await bot.start(DISCORD_TOKEN)
+    try:
+        async with bot:
+            await bot.start(DISCORD_TOKEN)
+    finally:
+        if runner:
+            await runner.cleanup()
 
 if __name__ == "__main__":
     asyncio.run(main())
