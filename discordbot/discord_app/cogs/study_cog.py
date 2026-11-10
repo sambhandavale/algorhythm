@@ -1,11 +1,13 @@
 import discord
+from datetime import datetime
 from discord import app_commands
 from discord.ext import commands
+from core.models.user import ProgressRecord
 from core.services.study_manager import StudyManager
 from core.services.streak_service import StreakService
 from core.interfaces.verifier import ISubmissionVerifier
 from core.interfaces.ai_tutor import IAITutor
-from discord_app.views.problem_view import create_problem_embed, ProblemCardView
+from discord_app.views.problem_view import create_problem_embed, ProblemCardView, HintModal
 from discord_app.views.notes_view import create_pattern_notes_embed
 
 class StudyCog(commands.Cog):
@@ -163,3 +165,114 @@ class StudyCog(commands.Cog):
                 p, user_id, self.study_manager, self.streak_service, self.verifier, self.ai_tutor
             )
             await interaction.channel.send(embed=embed, view=view)
+
+    @commands.Cog.listener("on_interaction")
+    async def on_persistent_button_click(self, interaction: discord.Interaction):
+        """
+        Global fallback listener for card buttons (Verify, Mark Done, Hint, Skip).
+        Ensures buttons ALWAYS work even after bot restarts or across sessions.
+        """
+        if interaction.type != discord.InteractionType.component:
+            return
+
+        custom_id = interaction.data.get("custom_id", "")
+        if not custom_id or not any(custom_id.startswith(p) for p in ("verify_", "manual_", "hint_", "skip_")):
+            return
+
+        # If already handled by in-memory view, do nothing
+        if interaction.response.is_done():
+            return
+
+        action, problem_id = custom_id.split("_", 1)
+        problem = self.study_manager.primary_source.get_problem_by_id(problem_id)
+        if not problem:
+            return
+
+        user_id = interaction.user.id
+
+        if action == "manual":
+            record = ProgressRecord(
+                user_id=user_id,
+                problem_id=problem.id,
+                slug=problem.lc_slug or problem.id,
+                status="SOLVED",
+                solved_at=datetime.now().isoformat(),
+                source="MANUAL"
+            )
+            await self.study_manager.repository.save_progress(record)
+            streak, longest = await self.streak_service.update_user_streak(user_id)
+            updated_embed = create_problem_embed(problem, user_streak=streak, is_solved=True)
+            if interaction.message:
+                try:
+                    await interaction.message.edit(embed=updated_embed, view=None)
+                except Exception:
+                    pass
+            await interaction.response.send_message(
+                f"✅ Marked `{problem.title}` as solved!\n"
+                f"🔥 Current Streak: **{streak} Days** (Record: {longest} Days)",
+                ephemeral=True
+            )
+
+        elif action == "verify":
+            user_data = await self.study_manager.repository.get_user(user_id)
+            handle = user_data.leetcode_username if user_data else None
+            if not handle:
+                await interaction.response.send_message(
+                    "⚠️ You haven't linked your LeetCode handle yet! Run `/set-handle <username>` first.",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.defer(ephemeral=True)
+            is_verified, msg = await self.verifier.verify(handle, problem)
+            if is_verified:
+                record = ProgressRecord(
+                    user_id=user_id,
+                    problem_id=problem.id,
+                    slug=problem.lc_slug or problem.id,
+                    status="SOLVED",
+                    solved_at=datetime.now().isoformat(),
+                    source="LEETCODE"
+                )
+                await self.study_manager.repository.save_progress(record)
+                streak, longest = await self.streak_service.update_user_streak(user_id)
+                updated_embed = create_problem_embed(problem, user_streak=streak, is_solved=True)
+                if interaction.message:
+                    try:
+                        await interaction.message.edit(embed=updated_embed, view=None)
+                    except Exception:
+                        pass
+                await interaction.followup.send(
+                    f"🎉 **Verified!** Great work solving `{problem.title}` on LeetCode!\n"
+                    f"🔥 Current Streak: **{streak} Days** (Record: {longest} Days)",
+                    ephemeral=True
+                )
+            else:
+                await interaction.followup.send(f"❌ {msg}", ephemeral=True)
+
+        elif action == "hint":
+            if not self.ai_tutor:
+                await interaction.response.send_message("AI Tutor is not configured.", ephemeral=True)
+                return
+            await interaction.response.send_modal(HintModal(self.ai_tutor, problem))
+
+        elif action == "skip":
+            record = ProgressRecord(
+                user_id=user_id,
+                problem_id=problem.id,
+                slug=problem.lc_slug or problem.id,
+                status="SKIPPED",
+                solved_at=datetime.now().isoformat(),
+                source="MANUAL"
+            )
+            await self.study_manager.repository.save_progress(record)
+            if interaction.message:
+                try:
+                    await interaction.message.edit(view=None)
+                except Exception:
+                    pass
+            await interaction.response.send_message(
+                f"⏩ Skipped `{problem.title}`. Run `/next` or `/daily` to get your next problem!",
+                ephemeral=True
+            )
+
