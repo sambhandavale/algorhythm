@@ -79,6 +79,8 @@ class SchedulerCog(commands.Cog):
                             )
                         except Exception as e:
                             print(f"[Scheduler Morning Error]: {e}")
+                    else:
+                        print(f"[Scheduler Warning]: Channel {user.channel_id} not found for user {user_id}. Run /set-daily-channel in Discord.")
 
             # -------------------------------------------------------------
             # 2. EVERY 3 HOURS ACCOUNTABILITY NUDGE (Until Solved)
