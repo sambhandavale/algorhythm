@@ -47,7 +47,14 @@ flowchart TD
 * **Flexible Pacing**: Run `/next` anytime to grab the next problem immediately, or `/next-pattern` to fast-track whole sections.
 * **Extra Pattern Drills (`/extra`)**: Pulls bonus practice questions matching your current active pattern from LeetCode with an automated AI fallback.
 
-### 2. 🖥️ Next.js Web Dashboard (`client/`)
+### 2. 👥 Multi-User & Study Group Support
+* **Dedicated Channels Per Person**: Server members can each bind their own channel (e.g. `#sam-dsa`, `#alex-dsa`) using `/set-daily-channel`.
+* **Personalized Notification Times**: Each member can set their own preferred reminder schedule via `/set-time <hour> <min>`.
+* **Isolated Streaks & Progress**: Individual LeetCode handles, solving streaks, active patterns, and completed problems are tracked independently in Turso Cloud.
+* **Concurrent Cron Delivery**: The automated scheduler delivers each member's tailored daily challenge and accountability nudges directly to their own channel.
+* **Multi-User Web Dashboard**: Easily view and toggle any member's progress on the web dashboard via `/?user_id=<discord_id>`.
+
+### 3. 🖥️ Next.js Web Dashboard (`client/`)
 * **TakeUForward-Inspired Dark Theme**: Built with Next.js 15, Tailwind CSS, and Google Font **Poppins** for a smooth, high-contrast dark aesthetic (`#0D0F17`).
 * **Nested Collapsible Accordions**: Browse all 19 Steps and 69 Subtopics/Patterns cleanly.
 * **Instant Single & Bulk Updates**: Toggle individual checkboxes, or click **`[ Mark Section ]`** / **`[ Mark Step Done ]`** to check off whole chapters in 1 second.
