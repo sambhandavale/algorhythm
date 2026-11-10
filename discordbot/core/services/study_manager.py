@@ -70,12 +70,13 @@ class StudyManager:
         solved_ids = await self.repository.get_solved_ids(user_id)
         assignment = await self.repository.get_daily_assignment(user_id, today_str)
 
-        # 1. If today already has an active assignment and it's not solved yet, return it
+        # 1. If today already has an assigned problem, return it (locked for the day)
         if assignment:
             pid = assignment["problem_id"]
             p = self.primary_source.get_problem_by_id(pid)
-            if p and pid not in solved_ids:
-                return p, bool(assignment.get("completed", 0)), False
+            if p:
+                is_done = bool(assignment.get("completed", 0)) or (pid in solved_ids)
+                return p, is_done, False
 
         # 2. Check the most recent past assignment: Was it left unfinished?
         latest = await self.repository.get_latest_assignment(user_id)

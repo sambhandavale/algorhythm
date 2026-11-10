@@ -58,9 +58,19 @@ class StudyCog(commands.Cog):
             problem, user_id, self.study_manager, self.streak_service, self.verifier, self.ai_tutor
         ) if not is_solved else None
 
-        repeat_note = "🔁 **Unfinished from Yesterday**: Let's conquer this problem today!\n" if is_repeated else ""
+        if is_solved:
+            msg_content = (
+                f"🎉 **You have already completed today's challenge: `{problem.title}`!**\n"
+                f"Awesome consistency! Current streak: **{user.current_streak} Days** 🔥\n\n"
+                f"• Your next daily challenge arrives tomorrow at your scheduled time.\n"
+                f"• Want to keep practicing right now? Run **`/next`** to fast-track ahead, or **`/extra`** for bonus drills!"
+            )
+        else:
+            repeat_note = "🔁 **Unfinished from Yesterday**: Let's conquer this problem today!\n" if is_repeated else ""
+            msg_content = f"{repeat_note}👋 Hey <@{user_id}>, here is your active DSA challenge for today:"
+
         await interaction.followup.send(
-            content=f"{repeat_note}👋 Hey <@{user_id}>, here is your DSA challenge for today:",
+            content=msg_content,
             embed=embed,
             view=view
         )
